@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficha Aluno - Administrador</title>
+
+<link rel="stylesheet" href="css/estilo.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<div id="marcaDagua"></div>
+
+<div id="telaLogin">
+    <div class="login-box">
+        <h2>Painel do Administrador</h2>
+        <input type="email" id="email" placeholder="E-mail (Admin)">
+        <input type="password" id="senha" placeholder="Senha">
+        <button onclick="fazerLogin()">Entrar</button>
+        <div id="msgErroLogin" class="erro"></div>
+    </div>
+</div>
+
+<div id="appPrincipal" class="container hidden">
+    <header class="topo">
+        <div class="topo-esquerda">
+            <img id="logoEscola" class="logo-escola" src="" alt="Logo" onclick="voltarParaTurmas()" title="Voltar ao início">
+            <span id="nomeEscola" class="nome-escola" onclick="voltarParaTurmas()" title="Voltar ao início"></span>
+        </div>
+        <div class="busca-container">
+            <input type="text" id="campoBusca" placeholder="Buscar aluno..." oninput="buscarAluno(this.value)">
+            <div id="listaSugestoes" class="hidden"></div>
+        </div>
+        <div class="usuario-info" title="Usuário logado">👤 <strong id="usuarioLogadoEmail">-</strong> <span id="usuarioLogadoCargo"></span></div>
+        <button class="btn-modo" onclick="alternarModoEscuro()" id="btnModo" title="Alternar modo claro/escuro">🌙</button>
+        <button class="btn-engrenagem" onclick="alternarConfiguracoes()" title="Configurações">⚙️</button>
+        <button class="btn-sair" onclick="fazerLogout()" title="Sair">🚪 Sair</button>
+    </header>
+
+    <div id="telaConfig" class="config-painel hidden">
+        <h2>Configurações</h2>
+        <div class="menu-config">
+            <button id="btnConfigTurma" class="ativo" onclick="mudarAbaConfig('turma')">Turma</button>
+            <button id="btnConfigUsuario" class="hidden" onclick="mudarAbaConfig('usuario')">Usuários</button>
+            <button id="btnConfigSenha" onclick="mudarAbaConfig('senha')">Senha</button>
+            <button id="btnConfigAparencia" class="hidden" onclick="mudarAbaConfig('aparencia')">🎨 Aparência</button>
+            <button id="btnConfigExportarPDF" onclick="mudarAbaConfig('exportarPDF')">🖨️ Impressão / PDF</button>
+            <button id="btnConfigBackup" class="hidden" onclick="mudarAbaConfig('backup')">💾 Backup</button>
+        </div>
+
+        <div id="abaTurma" class="form-config">
+            <label>Nome da Turma</label>
+            <input type="text" id="nomeTurma" placeholder="Ex: 1º Ano A">
+            <label>Turno</label>
+            <select id="turnoTurma"><option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Integral">Integral</option></select>
+            <label>Professor(a)</label>
+            <input type="text" id="professorTurma" placeholder="Nome do Professor(a)">
+            <label>Professor(a) de Apoio</label>
+            <input type="text" id="professorApoioTurma" placeholder="Nome do Professor(a) de Apoio">
+            <label>Pedagogo(a)</label>
+            <input type="text" id="pedagogoTurma" placeholder="Nome do Pedagogo(a)">
+            <label>Etapa de Ensino</label>
+            <select id="etapaEnsino"><option value="Infantil">Educação Infantil</option><option value="Fundamental">Ensino Fundamental</option></select>
+            <button onclick="salvarTurma()">Salvar Turma</button>
+        </div>
+
+        <div id="abaUsuario" class="form-config hidden">
+            <label>E-mail do Novo Usuário</label>
+            <input type="email" id="novoUsuarioEmail" placeholder="exemplo@escola.com">
+            <label>Nome de Exibição</label>
+            <input type="text" id="novoUsuarioNome" placeholder="Ex: Maria Silva">
+            <label>Cargo</label>
+            <select id="novoUsuarioCargo"><option value="pedagogo">👤 Pedagogo</option><option value="diretor">👑 Diretor</option></select>
+            <label>Senha Inicial</label>
+            <div class="campo-senha"><input type="password" id="novoUsuarioSenha" placeholder="Mínimo 6 caracteres"><button type="button" class="btn-olho" onclick="alternarVerSenha('novoUsuarioSenha', this)">👁️</button></div>
+            <label>Confirmar Senha</label>
+            <div class="campo-senha"><input type="password" id="novoUsuarioSenha2" placeholder="Digite a mesma senha"><button type="button" class="btn-olho" onclick="alternarVerSenha('novoUsuarioSenha2', this)">👁️</button></div>
+            <button onclick="adicionarUsuario()">Criar Usuário</button>
+            <label style="margin-top:25px;">Usuários Cadastrados</label>
+            <div id="listaUsuarios" class="lista-usuarios"><p style="color:var(--cor-texto-suave);font-size:13px;">Carregando...</p></div>
+        </div>
+
+        <div id="abaSenha" class="form-config hidden">
+            <label>Nova Senha</label>
+            <div class="campo-senha"><input type="password" id="novaSenha" placeholder="Mínimo 6 caracteres"><button type="button" class="btn-olho" onclick="alternarVerSenha('novaSenha', this)">👁️</button></div>
+            <label>Confirmar Nova Senha</label>
+            <div class="campo-senha"><input type="password" id="novaSenha2" placeholder="Digite a mesma senha"><button type="button" class="btn-olho" onclick="alternarVerSenha('novaSenha2', this)">👁️</button></div>
+            <button onclick="trocarSenha()">Alterar Minha Senha</button>
+        </div>
+
+        <div id="abaExportarPDF" class="form-config hidden" style="max-width:700px;">
+
+            <label style="font-size:16px;margin-bottom:10px;">🖨️ Configurações de Impressão / PDF</label>
+            <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:15px;">
+                Estas opções valem para <strong>todas</strong> as gerações de PDF (individual e em lote).
+            </p>
+
+            <div class="presets-impressao" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+                <button type="button" onclick="aplicarPresetImpressao('completo')">📋 Completo</button>
+                <button type="button" onclick="aplicarPresetImpressao('essencial')">⚡ Essencial</button>
+                <button type="button" onclick="aplicarPresetImpressao('ocorrencias')">📌 Só Ocorrências</button>
+                <button type="button" onclick="aplicarPresetImpressao('conselho')">📖 Só Conselho</button>
+            </div>
+
+            <div class="secao-titulo">📄 Relatório Completo (botão "📄 Exportar PDF")</div>
+            <label class="check-linha"><input type="checkbox" id="relatorio_cabecalho_logo"> Incluir logo no cabeçalho</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_foto"> Incluir foto do aluno</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_idade"> Incluir idade calculada</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_encaminhamentos"> Incluir encaminhamentos (Saúde / Social / Atendimentos)</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_observacoes"> Incluir observações / medicações</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_estudo_caso"> Incluir estudo de caso</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_anexos"> Incluir lista de anexos (nomes)</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_incluir_conselho"> Incluir Conselho de Classe do ano</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_incluir_ocorrencias"> Incluir Ocorrências do ano</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_incluir_relatorios_estudante"> Incluir Relatórios do Estudante</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_incluir_relatorios_inclusao"> Incluir Relatórios de Inclusão</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_assinatura_pedagogo"> Incluir assinatura do Pedagogo(a)</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_assinatura_professor"> Incluir assinatura do Professor(a)</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_assinatura_apoio"> Incluir assinatura do Professor(a) de Apoio</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_assinatura_responsavel"> Incluir assinatura do Responsável</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_visto_direcao"> Incluir linha "Visto da Direção"</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_rodape_emissao"> Incluir rodapé "Emitido em ___ por ___"</label>
+            <label class="check-linha"><input type="checkbox" id="relatorio_numeracao_pagina"> Incluir numeração de página</label>
+
+            <div class="secao-titulo" style="margin-top:25px;">📋 Impressão / PDF de Ocorrências (botão "🖨️")</div>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_cabecalho_logo"> Incluir logo no cabeçalho</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_foto"> Incluir foto do aluno</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_encaminhamentos"> Incluir encaminhamentos</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_observacoes"> Incluir observações / medicações</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_estudo_caso"> Incluir estudo de caso</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_anexos"> Incluir lista de anexos (nomes)</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_assinatura_pedagogo"> Incluir assinatura do Pedagogo(a)</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_assinatura_professor"> Incluir assinatura do Professor(a)</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_assinatura_apoio"> Incluir assinatura do Professor(a) de Apoio</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_assinatura_responsavel"> Incluir assinatura do Responsável</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_rodape_emissao"> Incluir rodapé "Emitido em ___ por ___"</label>
+            <label class="check-linha"><input type="checkbox" id="ocorrencias_numeracao_pagina"> Incluir numeração de página</label>
+
+            <label style="font-size:13px;font-weight:600;margin-top:8px;display:block;">Filtro de ocorrências:</label>
+            <select id="ocorrencias_filtro" style="padding:10px;border:2px solid var(--cor-borda);border-radius:8px;font-size:13px;background:var(--cor-fundo-card);color:var(--cor-texto);">
+                <option value="todas">Mostrar todas</option>
+                <option value="com_comunicado">Somente com comunicado aos pais</option>
+                <option value="sem_comunicado">Somente sem comunicado</option>
+            </select>
+
+            <div class="secao-titulo" style="margin-top:25px;">📋 Filtro de Encaminhamentos</div>
+            <label class="check-linha" style="background:#fff7e6;border-color:#f0c878;">
+                <input type="checkbox" id="mostrar_somente_encaminhamentos">
+                <strong>Mostrar somente encaminhamentos</strong> (oculta linhas "Não" e categorias vazias)
+            </label>
+
+            <div class="secao-titulo" style="margin-top:25px;">🎨 Estilo Geral (compartilhado)</div>
+            <label class="check-linha"><input type="checkbox" id="estilo_monocromatico"> Modo monocromático (impressão em preto e branco)</label>
+            <label style="font-size:13px;font-weight:600;margin-top:8px;display:block;">Tamanho da fonte:</label>
+            <select id="estilo_tamanho_fonte" style="padding:10px;border:2px solid var(--cor-borda);border-radius:8px;font-size:13px;background:var(--cor-fundo-card);color:var(--cor-texto);">
+                <option value="pequena">Pequena</option>
+                <option value="normal">Normal</option>
+                <option value="grande">Grande</option>
+            </select>
+
+            <button onclick="salvarConfiguracoesPDF()" class="btn-sucesso" style="margin-top:25px;">💾 Salvar Configurações</button>
+        </div>
+
+        <div id="abaAparencia" class="form-config hidden">
+            <label>Nome da Escola</label>
+            <input type="text" id="inputNomeEscola" placeholder="Ex: Escola Municipal Pedro Biscaia">
+            <label>Logo da Escola</label>
+            <input type="file" id="inputLogo" accept="image/*">
+            <button onclick="salvarAparencia()">Salvar Aparência</button>
+            <label style="margin-top:25px;">Cor do Tema</label>
+            <div class="grid-cores">
+                <div class="cor-opcao" style="background:#4a6cf7;" onclick="trocarTema('azul', this)" data-tema="azul"></div>
+                <div class="cor-opcao" style="background:#27ae60;" onclick="trocarTema('verde', this)" data-tema="verde"></div>
+                <div class="cor-opcao" style="background:#8e44ad;" onclick="trocarTema('roxo', this)" data-tema="roxo"></div>
+                <div class="cor-opcao" style="background:#e84393;" onclick="trocarTema('rosa', this)" data-tema="rosa"></div>
+                <div class="cor-opcao" style="background:#e67e22;" onclick="trocarTema('laranja', this)" data-tema="laranja"></div>
+                <div class="cor-opcao" style="background:#2c3e50;" onclick="trocarTema('azul-escuro', this)" data-tema="azul-escuro"></div>
+            </div>
+        </div>
+
+        <div id="abaBackup" class="form-config hidden">
+            <label>💾 Backup dos Dados</label>
+            <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:10px;">Baixe um arquivo com os dados do sistema (turmas, alunos, fichas e usuários).</p>
+            <button onclick="fazerBackup()" class="btn-sucesso">⬇ Baixar Backup</button>
+            <label style="margin-top:30px;">📥 Restaurar Dados</label>
+            <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:10px;">⚠️ Atenção: a restauração grava turmas, alunos e fichas do backup. Registros com o mesmo ID serão mesclados/atualizados com os dados do arquivo.</p>
+            <input type="file" id="inputRestaurar" accept=".json">
+            <button onclick="restaurarBackup()" class="btn-perigo">⬆ Restaurar Backup</button>
+        </div>
+    </div>
+
+    <div id="telaTurmas">
+        <div class="ordenacao-turmas">
+            <label for="ordemTurmas">🔀 Ordenar por:</label>
+            <select id="ordemTurmas" onchange="mudarOrdemTurmas(this.value)">
+                <option value="etapa">Etapa (Infantil → Fundamental)</option>
+                <option value="nome_az">Nome (A → Z)</option>
+                <option value="nome_za">Nome (Z → A)</option>
+                <option value="turno">Turno</option>
+                <option value="alunos">Qtd. de alunos</option>
+            </select>
+        </div>
+        <div id="gridTurmas" class="grid-turmas"></div>
+    </div>
+
+    <div id="telaTurmaDetalhe" class="hidden">
+        <button class="btn-voltar" onclick="voltarParaTurmas()">⬅ Voltar</button>
+        <div class="turma-header">
+            <div>
+                <h1 id="detalheNomeTurma">Nome da Turma</h1>
+                <h3 id="detalheProfessor">Professor: ...</h3>
+                <h3 id="detalheProfessorApoio"></h3>
+                <h3 id="detalhePedagogo">Pedagogo: ...</h3>
+                <h3 id="detalheTurno">Turno: ...</h3>
+            </div>
+            <div class="acoes-turma">
+                <button class="btn-exportar-pdf-turma" onclick="abrirModalExportarPDFTurma()">📄 Exportar PDF (Todos)</button>
+                <button class="btn-engrenagem" onclick="abrirEngrenagemTurma()" title="Opções da Turma">⚙️</button>
+            </div>
+        </div>
+        <div id="listaAlunos" class="lista-alunos"></div>
+    </div>
+
+    <div id="telaFichaAluno" class="hidden">
+        <button class="btn-voltar" onclick="voltarParaTurma()">⬅ Voltar para a Turma</button>
+        <div class="ficha-header">
+            <div class="ficha-header-topo">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <h2 id="fichaNome">Nome do Aluno</h2>
+                    <button class="btn-engrenagem" onclick="abrirModalEditarAluno()" title="Editar dados do aluno" style="width:38px;height:38px;font-size:18px;">⚙️</button>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn-exportar-pdf" onclick="abrirModalExportarPDF()">📄 Exportar PDF</button>
+                </div>
+            </div>
+            <div class="ficha-grid">
+                <div><strong>CGM:</strong> <span id="fichaCGM">-</span></div>
+                <div><strong>Data Nasc:</strong> <span id="fichaDataNasc">-</span></div>
+                <div><strong>Idade:</strong> <span id="fichaIdade">-</span></div>
+                <div><strong>Turma:</strong> <span id="fichaTurma">-</span></div>
+                <div><strong>Professor:</strong> <span id="fichaProfessor">-</span></div>
+                <div><strong>Pedagogo:</strong> <span id="fichaPedagogo">-</span></div>
+                <div><strong>Turno:</strong> <span id="fichaTurno">-</span></div>
+                <div><strong>Unidade Origem:</strong> <span id="fichaUnidadeOrigem">-</span></div>
+            </div>
+        </div>
+
+        <div class="ficha-layout">
+            <div class="ficha-secao">
+                <h3><span class="h3-titulo">Encaminhamentos</span></h3>
+
+                <table class="tabela-encaminhamentos">
+                    <thead><tr><th>Encaminhamentos de Saúde</th><th>Sim (X)</th><th>Data</th></tr></thead>
+                    <tbody>
+                        <tr><td>Psicológico</td><td><select id="saude_psicologico"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="saude_psicologico_data"></td></tr>
+                        <tr><td>Fonoaudiológico</td><td><select id="saude_fono"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="saude_fono_data"></td></tr>
+                        <tr><td>Neurológico</td><td><select id="saude_neuro"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="saude_neuro_data"></td></tr>
+                        <tr><td>Pediatra</td><td><select id="saude_pediatra"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="saude_pediatra_data"></td></tr>
+                    </tbody>
+                </table>
+
+                <button type="button" class="obs-toggle" id="obs-toggle-saude" onclick="toggleObs('saude')">
+                    <span class="obs-toggle-texto">+ Adicionar observação (Saúde)</span>
+                    <span class="obs-seta">▼</span>
+                </button>
+                <div class="obs-resumo hidden" id="obs-resumo-saude"></div>
+                <div class="obs-box hidden" id="obs-box-saude">
+                    <textarea id="obs_enc_saude" placeholder="Anotações sobre os encaminhamentos de saúde..."></textarea>
+                    <div class="obs-acoes">
+                        <button type="button" class="btn-obs-apagar" onclick="apagarObs('saude')">🗑️ Apagar</button>
+                        <button type="button" class="btn-obs-salvar" onclick="salvarObs('saude')">💾 Salvar observação</button>
+                    </div>
+                </div>
+
+                <div class="bloco-psicoeducacional">
+                    <h4>🧠 Avaliação Psicoeducacional:
+                        <select id="saude_psicoeducacional" onchange="toggleObsPsicoeducacional()">
+                            <option value="Não">Não</option>
+                            <option value="Sim">Sim</option>
+                        </select>
+                    </h4>
+                    <div id="obsPsicoeducacionalWrap" class="hidden">
+                        <div class="obs-box">
+                            <textarea id="obs_enc_psicoeducacional" placeholder="Descreva a avaliação psicoeducacional..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="tabela-encaminhamentos">
+                    <thead><tr><th>Frequenta outros atendimentos?</th><th>Sim (X)</th><th>Data</th></tr></thead>
+                    <tbody>
+                        <tr><td>CMAEE-AV</td><td><select id="atend_cmaee_av"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="atend_cmaee_av_data"></td></tr>
+                        <tr><td>CMAEE-Surdez</td><td><select id="atend_cmaee_surdez"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="atend_cmaee_surdez_data"></td></tr>
+                        <tr><td>CMAEE-TEA</td><td><select id="atend_cmaee_tea"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="atend_cmaee_tea_data"></td></tr>
+                        <tr><td>CMAEE-JOELMA</td><td><select id="atend_cmaee_joelma"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="atend_cmaee_joelma_data"></td></tr>
+                    </tbody>
+                </table>
+
+                <button type="button" class="obs-toggle" id="obs-toggle-atend" onclick="toggleObs('atend')">
+                    <span class="obs-toggle-texto">+ Adicionar observação (Atendimentos)</span>
+                    <span class="obs-seta">▼</span>
+                </button>
+                <div class="obs-resumo hidden" id="obs-resumo-atend"></div>
+                <div class="obs-box hidden" id="obs-box-atend">
+                    <textarea id="obs_enc_atend" placeholder="Anotações sobre outros atendimentos..."></textarea>
+                    <div class="obs-acoes">
+                        <button type="button" class="btn-obs-apagar" onclick="apagarObs('atend')">🗑️ Apagar</button>
+                        <button type="button" class="btn-obs-salvar" onclick="salvarObs('atend')">💾 Salvar observação</button>
+                    </div>
+                </div>
+
+                <table class="tabela-encaminhamentos">
+                    <thead><tr><th>Encaminhamentos Sociais</th><th>Sim (X)</th><th>Data</th></tr></thead>
+                    <tbody>
+                        <tr><td>Rede de Proteção</td><td><select id="social_rede"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="social_rede_data"></td></tr>
+                        <tr><td>Busca Ativa</td><td><select id="social_busca"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="social_busca_data"></td></tr>
+                        <tr><td>Conselho Tutelar</td><td><select id="social_conselho"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="social_conselho_data"></td></tr>
+                        <tr><td>SERP</td><td><select id="social_serp"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="social_serp_data"></td></tr>
+                        <tr><td>SINAN</td><td><select id="social_sinan"><option>Não</option><option>Sim</option></select></td><td><input type="date" id="social_sinan_data"></td></tr>
+                    </tbody>
+                </table>
+
+                <button type="button" class="obs-toggle" id="obs-toggle-social" onclick="toggleObs('social')">
+                    <span class="obs-toggle-texto">+ Adicionar observação (Social)</span>
+                    <span class="obs-seta">▼</span>
+                </button>
+                <div class="obs-resumo hidden" id="obs-resumo-social"></div>
+                <div class="obs-box hidden" id="obs-box-social">
+                    <textarea id="obs_enc_social" placeholder="Anotações sobre os encaminhamentos sociais..."></textarea>
+                    <div class="obs-acoes">
+                        <button type="button" class="btn-obs-apagar" onclick="apagarObs('social')">🗑️ Apagar</button>
+                        <button type="button" class="btn-obs-salvar" onclick="salvarObs('social')">💾 Salvar observação</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="foto-container">
+                <h3>Foto do Aluno <button class="btn-camera" onclick="abrirCamera()">📷</button></h3>
+                <input type="file" id="inputFoto" accept="image/*" class="hidden" onchange="carregarFoto(event)">
+                <div class="foto-placeholder" id="fotoAlunoPlaceholder">Sem foto cadastrada</div>
+                <img id="fotoAlunoImg" src="" alt="Foto do Aluno">
+            </div>
+        </div>
+
+        <div class="ficha-secao">
+            <h3><span class="h3-titulo">Anexos</span></h3>
+            <div class="anexo-aviso">📎 Adicione documentos (imagens). Você pode escolher da galeria ou tirar foto na hora.</div>
+            <button class="btn-add-conselho" onclick="abrirModalAdicionarAnexo()">➕ Adicionar Anexo</button>
+            <div id="listaAnexos" class="lista-anexos"></div>
+        </div>
+
+        <div class="ficha-secao">
+            <h3><span class="h3-titulo">Observações / Medicações</span></h3>
+            <div class="campo-grande"><textarea id="observacoes" placeholder="Ex: Toma medicação X, acompanhamento Y..."></textarea></div>
+            <div class="estudo-caso">
+                <label>Estudo de Caso:</label>
+                <label><input type="radio" name="estudoCaso" value="Sim"> Sim</label>
+                <label><input type="radio" name="estudoCaso" value="Nao"> Não</label>
+            </div>
+        </div>
+
+        <div class="ficha-secao">
+            <h3>
+                <span class="h3-titulo">Ocorrências</span>
+                <button class="btn-icone" onclick="abrirModalImprimirOcorrencias()" title="Imprimir ocorrências">🖨️</button>
+            </h3>
+            <button class="btn-ocorrencia" onclick="abrirModalOcorrencia()">➕ Adicionar Ocorrência</button>
+            <div id="listaOcorrencias" class="lista-ocorrencias"></div>
+        </div>
+
+        <div class="ficha-secao">
+            <h3><span class="h3-titulo">Conselho de Classe</span></h3>
+            <button class="btn-add-conselho" onclick="abrirModalAdicionarConselho()">➕ Adicionar Conselho de Classe</button>
+            <div id="conselhoContainer"></div>
+        </div>
+
+        <button class="btn-salvar" onclick="salvarFichaAluno()">💾 Salvar Ficha do Aluno</button>
+    </div>
+</div>
+
+<!-- MODAL: OCORRÊNCIA -->
+<div id="modalOcorrencia" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>Nova Ocorrência</h3>
+        <label style="font-weight:600;font-size:13px;">Data da Ocorrência</label>
+        <input type="date" id="dataOcorrencia" style="width:100%;padding:12px;border:2px solid var(--cor-borda);border-radius:var(--raio-pequeno);font-size:14px;margin:8px 0 15px 0;background:var(--cor-fundo-card);color:var(--cor-texto)">
+        <textarea id="textoOcorrencia" placeholder="Descreva o que aconteceu..."></textarea>
+        <div style="text-align:right;">
+            <button class="btn-cancelar-modal" onclick="fecharModalOcorrencia()">Cancelar</button>
+            <button class="btn-salvar-modal" onclick="salvarOcorrencia()">Salvar Ocorrência</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: COMUNICAR -->
+<div id="modalComunicar" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>📢 Convocar Pais / Responsáveis</h3>
+        <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:15px;">Escolha a data e o horário da convocação.</p>
+        <label style="font-weight:600;font-size:13px;">Data da Convocação</label>
+        <input type="date" id="comunicarData" style="width:100%;padding:12px;border:2px solid var(--cor-borda);border-radius:var(--raio-pequeno);font-size:14px;margin:8px 0;background:var(--cor-fundo-card);color:var(--cor-texto)">
+        <label style="font-weight:600;font-size:13px;">Horário da Convocação</label>
+        <input type="time" id="comunicarHora" style="width:100%;padding:12px;border:2px solid var(--cor-borda);border-radius:var(--raio-pequeno);font-size:14px;margin:8px 0 15px 0;background:var(--cor-fundo-card);color:var(--cor-texto)">
+        <div style="text-align:right;">
+            <button class="btn-cancelar-modal" onclick="fecharModalComunicar()">Cancelar</button>
+            <button class="btn-salvar-modal" onclick="salvarComunicado()">Salvar Convocação</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: IMPRIMIR OCORRÊNCIAS -->
+<div id="modalImprimirOcorrencias" class="modal-overlay modal-grande hidden">
+    <div class="modal-box">
+        <h3>🖨️ Imprimir Ocorrências</h3>
+        <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:12px;">Selecione as ocorrências que deseja incluir:</p>
+        <div class="cabecalho-selecao">
+            <button onclick="selecionarTodasOcorrencias(true)">✅ Selecionar Todas</button>
+            <button onclick="selecionarTodasOcorrencias(false)">⬜ Limpar Seleção</button>
+        </div>
+        <div id="listaOcorrenciasImpressao" class="lista-anos"></div>
+        <div style="text-align:right;margin-top:12px;">
+            <button class="btn-cancelar-modal" onclick="fecharModalImprimirOcorrencias()">Cancelar</button>
+            <button class="btn-salvar-modal" onclick="executarImpressaoOcorrencias()">📄 Gerar PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ADICIONAR ANEXO -->
+<div id="modalAdicionarAnexo" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>📎 Adicionar Anexo</h3>
+        <label style="font-weight:600;font-size:13px;">Nome do Anexo</label>
+        <input type="text" id="anexoNome" placeholder="Ex: Laudo médico, Foto do ocorrido..." style="width:100%;padding:12px;border:2px solid var(--cor-borda);border-radius:var(--raio-pequeno);font-size:14px;margin:8px 0 15px 0;background:var(--cor-fundo-card);color:var(--cor-texto)">
+        <label style="font-weight:600;font-size:13px;">Arquivo / Imagem</label>
+        <input type="file" id="anexoArquivo" accept="image/*" capture="environment" style="width:100%;padding:12px;border:2px solid var(--cor-borda);border-radius:var(--raio-pequeno);font-size:13px;margin:8px 0;background:var(--cor-fundo-card);color:var(--cor-texto)">
+        <p style="font-size:12px;color:var(--cor-texto-suave);margin-bottom:15px;">💡 No celular, ao escolher o arquivo você escolhe entre câmera e galeria.</p>
+        <div id="anexoPreview" style="text-align:center;margin-bottom:15px;"></div>
+        <div style="text-align:right;">
+            <button class="btn-cancelar-modal" onclick="fecharModalAdicionarAnexo()">Cancelar</button>
+            <button class="btn-salvar-modal" onclick="salvarAnexo()">💾 Salvar Anexo</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: FOTO FULL -->
+<div id="modalFotoFull" class="modal-foto-full hidden">
+    <button class="fechar" onclick="fecharFotoFull()">✕</button>
+    <img id="fotoFullImg" src="" alt="Anexo">
+    <div class="barra-acoes">
+        <button onclick="imprimirAnexoAtual()">📄 Gerar PDF</button>
+    </div>
+</div>
+
+<!-- MODAL: EXPORTAR PDF (INDIVIDUAL) -->
+<div id="modalExportarPDF" class="modal-overlay modal-print hidden">
+    <div class="modal-box">
+        <h3>📄 Exportar PDF</h3>
+        <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:15px;">Escolha o ano. As opções do que incluir estão em <strong>⚙️ Configurações → 🖨️ Impressão / PDF</strong>.</p>
+
+        <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Ano</label>
+        <select id="anoExportarPDF" class="ano-select"><option value="">Carregando...</option></select>
+
+        <div style="text-align:right;margin-top:20px;">
+            <button class="btn-cancelar-modal" onclick="fecharModalExportarPDF()">Cancelar</button>
+            <button class="btn-salvar-modal" onclick="executarExportarPDF()">📄 Baixar PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EXPORTAR PDF EM LOTE (TURMA) -->
+<div id="modalExportarPDFTurma" class="modal-overlay modal-grande hidden">
+    <div class="modal-box">
+        <h3>📄 Exportar PDF da Turma</h3>
+        <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:12px;">Um aluno por página, no mesmo arquivo PDF.</p>
+
+        <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Ano</label>
+        <select id="anoExportarPDFTurma" class="ano-select"><option value="">Carregando...</option></select>
+
+        <div class="secao-titulo">👥 Alunos</div>
+        <div class="cabecalho-selecao">
+            <button onclick="marcarTodosAlunosPDF(true)">✅ Marcar Todos</button>
+            <button onclick="marcarTodosAlunosPDF(false)">⬜ Limpar</button>
+        </div>
+        <div id="listaAlunosTurmaPDF" style="max-height:280px;overflow-y:auto;margin-bottom:15px;"></div>
+
+        <p style="font-size:12px;color:var(--cor-texto-suave);">As opções do que incluir estão em <strong>⚙️ Configurações → 🖨️ Impressão / PDF</strong>.</p>
+
+        <div style="text-align:right;margin-top:20px;">
+            <button class="btn-cancelar-modal" onclick="fecharModalExportarPDFTurma()">Cancelar</button>
+            <button class="btn-salvar-modal" onclick="executarExportarPDFTurma()">📄 Baixar PDF da Turma</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ENGRENAGEM TURMA -->
+<div id="modalEngrenagemTurma" class="modal-overlay modal-engrenagem hidden">
+    <div class="modal-box">
+        <h3>Opções da Turma</h3>
+        <button class="btn-grande-modal adicionar" onclick="fecharModalEngrenagem(); abrirFormAluno();">➕ Adicionar Alunos</button>
+        <button class="btn-grande-modal remanejar" onclick="fecharModalEngrenagem(); abrirModalRemanejar();">🔄 Remanejar Alunos</button>
+        <button class="btn-grande-modal renomear" onclick="fecharModalEngrenagem(); abrirModalEditarTurma();">✏️ Editar Turma</button>
+        <button class="btn-grande-modal deletar" onclick="fecharModalEngrenagem(); deletarTurma();">🗑️ Deletar Turma</button>
+        <button class="btn-cancelar-modal" style="width:100%;margin-top:15px;" onclick="fecharModalEngrenagem()">Cancelar</button>
+    </div>
+</div>
+
+<!-- MODAL: ADICIONAR ALUNO -->
+<div id="modalAdicionarAluno" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>Adicionar Novo Aluno</h3>
+        <div class="form-config" style="max-width:100%;">
+            <label>Nome Completo</label><input type="text" id="alunoNome" placeholder="Nome do aluno">
+            <label>Data de Nascimento</label><input type="date" id="alunoDataNasc">
+            <label>CGM</label><input type="text" id="alunoCGM" placeholder="CGM">
+            <label>Unidade de Origem</label><input type="text" id="alunoUnidadeOrigem" placeholder="Unidade de Origem">
+            <div style="display:flex;gap:10px;margin-top:10px;">
+                <button onclick="salvarAluno()" style="flex:1;">Salvar Aluno</button>
+                <button onclick="fecharModalAdicionarAluno()" style="background:#95a5a6;flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EDITAR ALUNO -->
+<div id="modalEditarAluno" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>Editar Dados do Aluno</h3>
+        <div class="form-config" style="max-width:100%;">
+            <label>Nome Completo</label><input type="text" id="editAlunoNome">
+            <label>Data de Nascimento</label><input type="date" id="editAlunoDataNasc">
+            <label>CGM</label><input type="text" id="editAlunoCGM">
+            <label>Unidade de Origem</label><input type="text" id="editAlunoUnidadeOrigem">
+            <div style="display:flex;gap:10px;margin-top:10px;">
+                <button onclick="salvarEdicaoAluno()" style="flex:1;">Salvar Alterações</button>
+                <button onclick="fecharModalEditarAluno()" style="background:#95a5a6;flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: REMANEJAR -->
+<div id="modalRemanejar" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width:800px;">
+        <h3>Remanejar Alunos</h3>
+        <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:10px;">Para cada aluno, escolha a turma de destino. Se não quiser mover, deixe em branco.</p>
+        <div id="conteudoRemanejar"><p>Carregando alunos...</p></div>
+        <div style="text-align:right;margin-top:15px;">
+            <button class="btn-cancelar-modal" onclick="fecharModalRemanejar()">Cancelar</button>
+            <button class="btn-salvar-modal" onclick="salvarRemanejamentoIndividual()">🔄 Salvar Transferências</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EDITAR TURMA -->
+<div id="modalEditarTurma" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>Editar Turma</h3>
+        <div class="form-config" style="max-width:100%;">
+            <label>Nome da Turma</label><input type="text" id="editTurmaNome">
+            <label>Turno</label>
+            <select id="editTurmaTurno"><option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Integral">Integral</option></select>
+            <label>Professor(a)</label><input type="text" id="editTurmaProfessor">
+            <label>Professor(a) de Apoio</label><input type="text" id="editTurmaProfessorApoio">
+            <label>Pedagogo(a)</label><input type="text" id="editTurmaPedagogo">
+            <label>Etapa de Ensino</label>
+            <select id="editTurmaEtapa"><option value="Infantil">Educação Infantil</option><option value="Fundamental">Ensino Fundamental</option></select>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+                <button onclick="salvarEdicaoTurma()" style="flex:1;">Salvar Alterações</button>
+                <button onclick="fecharModalEditarTurma()" style="background:#95a5a6;flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ADICIONAR CONSELHO -->
+<div id="modalAdicionarConselho" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>Adicionar Conselho de Classe</h3>
+        <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:15px;">Selecione o ano para adicionar o conselho.</p>
+        <div id="listaAnosDisponiveis" class="form-config" style="max-width:100%;"><p style="color:var(--cor-texto-suave);">Carregando...</p></div>
+        <div style="text-align:right;margin-top:15px;">
+            <button class="btn-cancelar-modal" onclick="fecharModalAdicionarConselho()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: GERENCIAR USUÁRIO -->
+<div id="modalGerenciarUsuario" class="modal-overlay modal-gerenciar hidden">
+    <div class="modal-box" id="modalGerenciarUsuarioBox"></div>
+</div>
+
+<!-- MODAL: TROCAR SENHA DE OUTRO USUÁRIO -->
+<div id="modalTrocarSenhaOutro" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>Trocar Senha do Usuário</h3>
+        <div class="aviso-senha-pendente">⚠️ <strong>Importante:</strong> não é possível trocar a senha de outro usuário diretamente. Vamos definir uma <strong>senha pendente</strong>. No próximo login, o usuário será obrigado a criar uma nova senha pessoal.</div>
+        <div class="form-config" style="max-width:100%;">
+            <label>Nova Senha Temporária</label>
+            <div class="campo-senha"><input type="password" id="senhaPendente1" placeholder="Mínimo 6 caracteres"><button type="button" class="btn-olho" onclick="alternarVerSenha('senhaPendente1', this)">👁️</button></div>
+            <label>Confirmar Senha Temporária</label>
+            <div class="campo-senha"><input type="password" id="senhaPendente2" placeholder="Digite a mesma senha"><button type="button" class="btn-olho" onclick="alternarVerSenha('senhaPendente2', this)">👁️</button></div>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+                <button onclick="salvarSenhaPendente()" style="flex:1;">Definir Senha Pendente</button>
+                <button onclick="fecharModalSenhaPendente()" style="background:#95a5a6;flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: TROCA OBRIGATÓRIA DE SENHA -->
+<div id="modalTrocarSenhaPendente" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h3>🔐 Você precisa criar uma nova senha</h3>
+        <div class="aviso-senha-pendente">O administrador solicitou a troca da sua senha. Por segurança, defina uma nova senha pessoal antes de continuar.</div>
+        <div class="form-config" style="max-width:100%;">
+            <label>Nova Senha</label>
+            <div class="campo-senha"><input type="password" id="novaSenhaObrigatoria1" placeholder="Mínimo 6 caracteres"><button type="button" class="btn-olho" onclick="alternarVerSenha('novaSenhaObrigatoria1', this)">👁️</button></div>
+            <label>Confirmar Nova Senha</label>
+            <div class="campo-senha"><input type="password" id="novaSenhaObrigatoria2" placeholder="Digite a mesma senha"><button type="button" class="btn-olho" onclick="alternarVerSenha('novaSenhaObrigatoria2', this)">👁️</button></div>
+            <button onclick="definirNovaSenhaObrigatoria()" style="width:100%;margin-top:10px;">Definir Nova Senha</button>
+        </div>
+    </div>
+</div>
+
+<!-- OVERLAY: GERANDO PDF -->
+<div id="overlayGerandoPDF" class="overlay-gerando hidden">
+    <div class="spinner"></div>
+    <div>⏳ Gerando PDF... aguarde</div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
